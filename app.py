@@ -57,7 +57,7 @@ if st.session_state.stage >= 2:
     st.subheader("📑 모듈 2: 보건·의료 전문 분석 결과")
     
     with st.spinner("AI가 수치와 인사이트를 추출하고 있습니다..."):
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
         기사: {st.session_state.selected_article}
         키워드: {selected_keyword}
