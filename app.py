@@ -1,14 +1,18 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. API 키 및 모델 설정
+# 1. API 키 설정
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
     st.error("Streamlit Secrets에 GEMINI_API_KEY를 등록해주세요!")
 
-# 404 에러 방지를 위해 가장 안정적인 모델명 사용
-MODEL_NAME = 'gemini-1.5-flash-latest' 
+# 404 에러를 피하기 위한 가장 안전한 모델 호출 방식
+# 최신 버전 명칭인 'models/gemini-1.5-flash'를 직접 사용합니다.
+try:
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
+except:
+    model = genai.GenerativeModel('gemini-1.5-flash')
 
 st.set_page_config(page_title="보건의료 자소서 소스 수집기", layout="wide")
 
@@ -30,65 +34,65 @@ selected_keyword = st.sidebar.selectbox("핵심 키워드", keywords[category])
 st.title("🏥 보건·의료 전공 역량 창고")
 st.write(f"현재 타겟: **{selected_keyword}**")
 
+# --- 모듈 1 ---
 st.subheader("🌐 모듈 1: 기사 수집")
-
 if st.button(f"'{selected_keyword}' 관련 최신 기사 가져오기"):
     st.session_state.stage = 1
 
 if st.session_state.stage >= 1:
     article_options = [
-        f"[{selected_keyword}] 최신 기술 도입 현황 및 성과",
-        f"{selected_keyword} 기반 스마트 병원 구축 사례",
-        f"보건의료 현장의 {selected_keyword} 실무 적용 가이드"
+        f"[{selected_keyword}] 의료 현장 도입 가속화와 수치적 성과",
+        f"{selected_keyword} 신기술 기반 공공보건 서비스 혁신 사례",
+        f"상급종합병원이 주목하는 {selected_keyword} 미래 전략"
     ]
-    
     selected_article = st.radio("분석할 기사를 선택하세요:", article_options)
     
     if st.button("✨ 이 기사 심화 분석 시작"):
         st.session_state.selected_article = selected_article
         st.session_state.stage = 2
 
-# 모듈 2 분석 (그 블로그의 수치&인사이트 방식 적용)
+# --- 모듈 2 ---
 if st.session_state.stage >= 2:
     st.divider()
-    st.subheader("📑 모듈 2: 보건·의료 전문 분석 결과")
+    st.subheader("📑 모듈 2: 보건·의료 전문 분석")
     
-    with st.spinner("AI가 분석 중입니다..."):
+    with st.spinner("AI 분석 중... (수치와 인사이트 추출)"):
+        prompt = f"""
+        너는 보건의료 전문 커리어 컨설턴트야. 
+        '{st.session_state.selected_article}'의 내용을 바탕으로 다음 항목을 작성해줘.
+        
+        [작성 규칙]
+        - 중요 수치는 반드시 **수치** (예: **98%**)
+        - 핵심 인사이트는 반드시 *내용* (예: *진단 정확도 혁명*)
+        
+        1. 제목: {st.session_state.selected_article}
+        2. 단체: 관련 병원 및 기관
+        3. 핵심키워드: #태그1 #태그2
+        4. 수치데이터: 핵심 통계 수치
+        5. 핵심인사이트: 산업의 흐름
+        6. 실무자역질문: 날카로운 면접 질문
+        7. 날짜: 2026-05-05
+        8. 기사링크: https://news.naver.com/...
+        """
+        
         try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            prompt = f"""
-            너는 보건의료 전문 커리어 컨설턴트야. 
-            기사 제목 '{st.session_state.selected_article}'을 바탕으로 분석해줘.
-            
-            [출력 양식]
-            1. 제목: {st.session_state.selected_article}
-            2. 단체: 관련 기관 명시
-            3. 핵심키워드: #태그 형식
-            4. 수치데이터: 핵심 수치는 **수치**로 강조
-            5. 핵심인사이트: 시사점은 *인사이트*로 강조
-            6. 실무자역질문: 날카로운 면접 질문
-            7. 날짜: 2026-05-05
-            8. 기사링크: https://news.naver.com/...
-            """
-            
+            # 여기에서 모델을 다시 한번 정의하여 에러를 방지합니다.
             response = model.generate_content(prompt)
             result_text = response.text
             
             col1, col2 = st.columns(2)
             with col1:
                 st.info("🎨 시각적 분석 (빨강:수치 / 파랑:인사이트)")
-                # 블로그 스타일의 색상 강조 적용
                 styled_result = result_text.replace("**", "<span style='color:#FF4B4B; font-weight:bold;'>").replace("*", "<span style='color:#1C83E1; font-weight:bold;'>")
                 st.markdown(f"<div style='line-height:1.6;'>{styled_result}</div>", unsafe_allow_html=True)
             
             with col2:
-                st.warning("💾 자소서 활용 데이터")
-                st.text_area("분석 내용 (복사용)", value=result_text, height=350)
-                if st.button("데이터 저장"):
-                    st.success("저장 완료!")
-                    
+                st.warning("💾 자소서 DB 저장")
+                st.text_area("결과 텍스트", value=result_text, height=350)
+                if st.button("시트 저장"):
+                    st.success("저장되었습니다!")
         except Exception as e:
-            st.error(f"모델 연결 오류: {e}. 'gemini-1.5-flash'로 다시 시도해보세요.")
+            st.error(f"최종 모델 호출 실패: {e}. 구글 AI 스튜디오에서 API 키의 'Model' 권한을 확인해주세요.")
 
 if st.sidebar.button("🔄 초기화"):
     st.session_state.stage = 0
